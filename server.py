@@ -6,7 +6,7 @@ import os
 import stat
 import logging
 import sys
-
+#使用FASTMCP框架创建一个名为 CodeQualityAuditor 的服务器，专门负责分析 GitHub 仓库的代码质量。这个服务器将提供一个工具函数 analyze_repo_quality，接受一个 Git 仓库的克隆 URL，执行以下步骤：s
 # 初始化 Server
 mcp = FastMCP("CodeQualityAuditor")
 
