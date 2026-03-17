@@ -30,7 +30,7 @@
 - `code_quality_analysis`（可选）：通过 MCP 服务克隆仓库并运行 flake8
 - `merge_analysis`：合并各分支产物
 - `multi_factor_ranking`：多因素归一化加权，计算 `final_score`
-- `report_generation`：读取 `skills/.../SKILL.md`，把 Top-N 的结构化数据喂给大模型，如果用户需要，生成最终 Markdown 报告（`final_results`）
+- `report_generation`：读取 `skills/.../SKILL.md`，把 Top-N 的结构化数据喂给大模型，如果用户需要，根据SKILL指导生成最终 Markdown 报告（`final_results`）
 
 ---
 
