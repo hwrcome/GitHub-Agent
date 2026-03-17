@@ -6,7 +6,7 @@ import asyncio
 from pathlib import Path
 import httpx
 from tools.mcp_adapter import mcp_adapter  # Import our MCP adapter
-
+#设置日志记录
 logger = logging.getLogger(__name__)
 
 # In-memory cache to store file content for given URLs
