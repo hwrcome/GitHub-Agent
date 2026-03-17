@@ -2,3 +2,15 @@
 *.db
 *.sqlite3
 github_cache.db
+# 忽略 Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 忽略虚拟环境
+venv/
+.env/
+
+# 忽略 IDE 配置（可选）
+.vscode/
+.idea/
