@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 # 导入你刚刚修改过的 github 工具库中的核心函数
 from tools.github2 import fetch_repo_documentation
 
-# 设置日志格式，方便看报错和进度
+# 设置日志格式以方便看报错和进度
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
