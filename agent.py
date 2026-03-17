@@ -13,9 +13,9 @@ from typing import List, Any
 # ---------------------------
 from tools.convert_query import convert_searchable_query
 from tools.parse_hardware import parse_hardware_spec
-from tools.github import ingest_github_repos
+from tools.github2 import ingest_github_repos
 from tools.dense_retrieval import hybrid_dense_retrieval
-from tools.cross_encoder_reranking import cross_encoder_reranking
+from tools.cross_encoder_reranking1 import cross_encoder_reranking
 from tools.filtering import threshold_filtering
 from tools.dependency_analysis import dependency_analysis
 from tools.activity_analysis import repository_activity_analysis
@@ -23,7 +23,7 @@ from tools.decision_maker import decision_maker
 from tools.code_quality import code_quality_analysis
 from tools.merge_analysis import merge_analysis
 from tools.ranking import multi_factor_ranking
-from tools.output_presentation import output_presentation
+from tools.report_generation import report_generation
 
 # ---------------------------
 # Logging & Environment Setup
@@ -56,6 +56,7 @@ class AgentState:
     activity_candidates: List[Any] = field(default_factory=list)
     quality_candidates: List[Any] = field(default_factory=list)
     final_ranked: List[Any] = field(default_factory=list)
+    final_results: str = field(default="")
 #field是为每个变量/属性创建一个全新的列表，这样不会数据揉到一起，列表在每次使用时都是全新的，而不是共享的。
 @dataclass(kw_only=True)
 class AgentStateInput:
@@ -68,9 +69,9 @@ class AgentStateOutput:
 #basemodel核心用于数据验证、类型转换和配置管理。
 class AgentConfiguration(BaseModel):
     max_results: int = Field(100, title="Max Results", description="Max GitHub results")
-    per_page: int = Field(25, title="Per Page", description="GitHub results per page")
-    dense_retrieval_k: int = Field(100, title="Dense K", description="Top‑K for dense retrieval")
-    cross_encoder_top_n: int = Field(50, title="Cross‑encoder N", description="Top‑N after re‑rank")
+    per_page: int = Field(15, title="Per Page", description="GitHub results per page")
+    dense_retrieval_k: int = Field(40, title="Dense K", description="Top‑K for dense retrieval")
+    cross_encoder_top_n: int = Field(10, title="Cross‑encoder N", description="Top‑N after re‑rank")
     min_stars: int = Field(50, title="Min Stars", description="Minimum star count")
     cross_encoder_threshold: float = Field(5.5, title="CE Threshold", description="Cross‑encoder score cutoff")
     sem_model_name: str = Field("all-mpnet-base-v2", title="SentenceTransformer model")
@@ -107,7 +108,7 @@ builder.add_node("decision_maker",         decision_maker)
 builder.add_node("code_quality_analysis",  code_quality_analysis)
 builder.add_node("merge_analysis",         merge_analysis)
 builder.add_node("multi_factor_ranking",   multi_factor_ranking)
-builder.add_node("output_presentation",    output_presentation)
+builder.add_node("report_generation",      report_generation)
 
 # Edges (dataflow)
 builder.add_edge(START,                     "convert_searchable_query")
@@ -129,8 +130,8 @@ builder.add_edge("repository_activity_analysis", "merge_analysis")
 builder.add_edge("code_quality_analysis",   "merge_analysis")
 
 builder.add_edge("merge_analysis",          "multi_factor_ranking")
-builder.add_edge("multi_factor_ranking",    "output_presentation")
-builder.add_edge("output_presentation",     END)
+builder.add_edge("multi_factor_ranking",    "report_generation")
+builder.add_edge("report_generation",       END)
 
 graph = builder.compile()
 
@@ -140,7 +141,7 @@ graph = builder.compile()
 if __name__ == "__main__":
     initial = AgentStateInput(
         user_query=(
-            "I am looking for lightweight chain-of-thought reasoning models for low-resource GPUs. Please run a static analysis and check for flake8 compliance to ensure the code correctness."
+            "I am looking for lightweight chain-of-thought reasoning models for low-resource GPUs. Please run a static analysis and check for flake8 compliance to ensure the code correctness, give me report"
         )
     )
     result = graph.invoke(initial)

@@ -17,11 +17,11 @@ from pathlib import Path
 #     max_tokens=512,
 #     max_retries=2,
 # )
-zhipuai_api_key ="your_zhipuai_api_key_here"  # Replace with your actual API key or load from environment
+zhipuai_api_key ="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"  # Replace with your actual API key or load from environment
 llm=ChatOpenAI(
-    base_url="https://open.bigmodel.cn/api/paas/v4/",
+    base_url="https://openrouter.ai/api/v1",
     api_key=zhipuai_api_key,
-    model="glm-4.5-flash",
+    model="minimax/minimax-m2-her",
     temperature=0.1,
     max_tokens=2048,
     request_timeout=180,
