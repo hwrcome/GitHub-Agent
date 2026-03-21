@@ -1,7 +1,7 @@
 ## 项目简介
 
 这是一个 **GitHub Agent**：输入用户需求后，自动在 GitHub 上检索候选仓库、抓取文档、进行多维度分析与排序，如果用户需要，可以生成一份 **结构化 Markdown 推荐报告**。
-
+并引入langsmith对agent的能力进行评测。
 项目的核心特点：
 
 - **检索 + 语义召回 + 交叉编码器重排**：先广撒网，再精排。
@@ -15,6 +15,7 @@
 入口文件为 `agent.py`，内部通过 LangGraph 构建工作流，整体链路如下：
 
 - 用户输入 `user_query`
+- 'analyze_intent'先分析用户的问题是否清晰，若不清晰，进行追问
 - `convert_searchable_query`：把自然语言需求转换为 GitHub 搜索标签（`tag1:tag2:...`）
 - `ingest_github_repos`：调用 GitHub API 搜索仓库，并为每个仓库构建 `combined_doc`（带缓存与语义提纯）
   - **SQLite 缓存**：使用 `github_cache.db` 持久化缓存 `combined_doc`，默认 **7 天过期**；命中则跳过 GitHub API 拉取与 LLM 调用
@@ -23,6 +24,7 @@
 - `hybrid_dense_retrieval`：语义召回（Top-K）
 - `cross_encoder_reranking`：交叉编码器重排（Top-N）
 - `threshold_filtering`：阈值过滤 + 最小 star 过滤
+- 引入条件路由，如果过滤后合适的仓库数量为0，则重新到`convert_searchable_query`节点生成新的搜索词
 - 并行分支：
   - `dependency_analysis`：依赖侧信号
   - `repository_activity_analysis`：活跃度信号（PR/Issue/提交频率/最近提交）
