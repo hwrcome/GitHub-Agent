@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     )
     redis_url: str = "redis://localhost:6379/0"
     celery_broker_url: str | None = None
-    jwt_secret: str = "change-me-in-development"
+    jwt_secret: str = "change-me-in-development-secret-32-bytes"
     jwt_algorithm: str = "HS256"
     jwt_expire_seconds: int = 1800
     agent_mode: str = "mock"
