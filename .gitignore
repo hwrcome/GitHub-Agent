@@ -10,6 +10,7 @@ __pycache__/
 # 忽略虚拟环境
 venv/
 .env/
+.worktrees/
 
 # 忽略 IDE 配置（可选）
 .vscode/
