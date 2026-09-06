@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 import time
+import json
+import hashlib
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
@@ -15,10 +17,24 @@ from app.config import get_settings
 from app.models import SearchRequest, SearchResult, Task
 from app.schemas.agent import SearchRunResult
 from app.observability import agent_duration_seconds, running_tasks
+from app.redis_client import get_redis
+from app.services.cache_service import CacheService
+from app.services.lock_service import LockService, LockUnavailable
 
 
 class InvalidTaskTransition(RuntimeError):
     pass
+
+
+def _search_cache_key(request: SearchRequest) -> str:
+    payload = json.dumps(
+        {"query": request.query, "config": request.config},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+    request_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return f"search:v1:{request_hash}:agent"
 
 
 def sanitize_error(exc: Exception) -> str:
@@ -86,19 +102,44 @@ async def execute_search_task(task_id: UUID) -> None:
                 task.progress = "STARTING"
                 task.started_at = task.started_at or datetime.now(timezone.utc)
 
-            progress: list[str] = []
-            running_tasks.inc()
-            started = time.perf_counter()
+            search_request = await session.get(SearchRequest, task_id)
+            if search_request is None:
+                raise RuntimeError("search request missing")
+            await session.commit()
+            redis = get_redis()
+            cache = CacheService(redis)
+            cache_key = _search_cache_key(search_request)
+            lease = None
+            lock_degraded = False
             try:
-                result: SearchRunResult = await __import__("asyncio").to_thread(
-                    run_search,
-                    task_id,
-                    mode=get_settings().agent_mode,
-                    progress_callback=progress.append,
-                )
+                cached = await cache.get_json(cache_key)
+                if cached is not None:
+                    result = SearchRunResult.model_validate(cached)
+                else:
+                    try:
+                        lease = await LockService(redis).acquire(cache_key, 900)
+                    except LockUnavailable:
+                        lock_degraded = True
+                    if lease is None and not lock_degraded:
+                        raise TransientAgentError("search lock is busy")
+                    progress = []
+                    running_tasks.inc()
+                    started = time.perf_counter()
+                    try:
+                        result = await __import__("asyncio").to_thread(
+                            run_search,
+                            task_id,
+                            mode=get_settings().agent_mode,
+                            progress_callback=progress.append,
+                        )
+                    finally:
+                        agent_duration_seconds.observe(time.perf_counter() - started)
+                        running_tasks.dec()
+                    await cache.set_json(cache_key, result.model_dump(mode="json"), ttl=3600)
             finally:
-                agent_duration_seconds.observe(time.perf_counter() - started)
-                running_tasks.dec()
+                if lease is not None:
+                    await lease.release()
+                await redis.aclose()
 
             async with session.begin():
                 task = await session.scalar(select(Task).where(Task.id == task_id).with_for_update())

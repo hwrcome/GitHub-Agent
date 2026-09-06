@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -76,6 +77,19 @@ class DocumentService:
             self.session.add(document)
             await self.session.commit()
             return DocumentSubmission(document, task, False)
+        except IntegrityError:
+            await self.session.rollback()
+            # A concurrent submission may have won the unique
+            # (user_id, checksum) constraint. Re-read it after the failed
+            # transaction so duplicate requests return the original task
+            # instead of surfacing a 500.
+            existing = await get_document_by_checksum(self.session, user_id, checksum)
+            if existing is not None and existing.ingest_task_id is not None:
+                task = await self.session.get(Task, existing.ingest_task_id)
+                if task is not None:
+                    await self.session.commit()
+                    return DocumentSubmission(existing, task, True)
+            raise
         except Exception:
             await self.session.rollback()
             raise
@@ -93,7 +107,10 @@ async def execute_document_task(task_id: UUID) -> None:
                 )
                 if task is None or document is None:
                     return
-                if task.status == "SUCCEEDED" and document.status == "READY":
+                if task.status in {"SUCCEEDED", "FAILED"} or document.status in {
+                    "READY",
+                    "FAILED",
+                }:
                     return
                 task.status = "RUNNING"
                 task.progress = "CHUNKING"

@@ -9,6 +9,9 @@ RUN groupadd --system app && useradd --system --gid app --create-home app
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY app ./app
+COPY agent_new.py ./
+COPY tools ./tools
+COPY skills ./skills
 COPY alembic ./alembic
 COPY alembic.ini docker-entrypoint.sh ./
 

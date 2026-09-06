@@ -15,6 +15,10 @@ return 0
 """
 
 
+class LockUnavailable(RuntimeError):
+    """Redis could not be reached; callers should degrade safely."""
+
+
 @dataclass
 class LockLease:
     client: Redis
@@ -40,4 +44,4 @@ class LockService:
                 return None
             return LockLease(self.client, f"lock:{key}", token)
         except RedisError:
-            return None
+            raise LockUnavailable("Redis lock service unavailable")

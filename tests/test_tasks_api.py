@@ -5,6 +5,9 @@ import pytest
 from tests.api_fixtures import ApiContext
 
 
+pytestmark = pytest.mark.integration
+
+
 @pytest.mark.asyncio
 async def test_user_cannot_read_another_users_task(api_context: ApiContext):
     _, user_a_token = await api_context.create_user("user-a@example.com")

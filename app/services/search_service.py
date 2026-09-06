@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Task
@@ -45,9 +46,27 @@ class SearchService:
                 request.to_config(),
             )
             if idempotency_key:
-                await service.find_or_reserve(
-                    user_id, "POST /search", idempotency_key, request_hash, task_id=task.id
-                )
+                try:
+                    await service.find_or_reserve(
+                        user_id, "POST /search", idempotency_key, request_hash, task_id=task.id
+                    )
+                except IntegrityError:
+                    # Another request may have inserted the same idempotency
+                    # key between our initial lookup and task creation. The
+                    # failed transaction also removes our task; re-read and
+                    # return the winner's task instead of leaking a 500.
+                    await self.session.rollback()
+                    existing = await service.find_or_reserve(
+                        user_id, "POST /search", idempotency_key, request_hash
+                    )
+                    if existing is None:
+                        raise
+                    existing_task = await self.session.get(Task, existing.task_id)
+                    if existing_task is None:
+                        raise
+                    self.reused = True
+                    await self.session.commit()
+                    return existing_task
             await self.session.commit()
             return task
         except Exception:

@@ -3,13 +3,15 @@ from collections.abc import AsyncIterator
 import httpx
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI
 from httpx import ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.api.auth import router as auth_router
 from app.db import get_db
+from app.main import create_app
 from app.models import Base
+
+
+pytestmark = pytest.mark.integration
 
 
 TEST_DATABASE_URL = "postgresql+asyncpg://github_agent:github_agent@localhost:55432/github_agent_test"
@@ -27,8 +29,7 @@ async def client() -> AsyncIterator[httpx.AsyncClient]:
         async with session_factory() as session:
             yield session
 
-    app = FastAPI()
-    app.include_router(auth_router)
+    app = create_app()
     app.dependency_overrides[get_db] = override_get_db
     async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as test_client:
         yield test_client

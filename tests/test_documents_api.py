@@ -3,6 +3,9 @@ import pytest
 from tests.api_fixtures import ApiContext
 
 
+pytestmark = pytest.mark.integration
+
+
 @pytest.mark.asyncio
 async def test_duplicate_document_is_not_reprocessed(api_context: ApiContext):
     _, token = await api_context.create_user("documents@example.com")

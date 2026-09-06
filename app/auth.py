@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db import get_db
+from app.errors import ApiError
 from app.models import User
 
 
@@ -66,12 +67,12 @@ async def get_current_user(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     if credentials is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+        raise ApiError(401, "AUTHENTICATION_REQUIRED", "Authentication required")
     try:
         claims = decode_access_token(credentials.credentials)
     except InvalidTokenError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid access token") from exc
+        raise ApiError(401, "INVALID_TOKEN", "Invalid access token") from exc
     user = await session.scalar(select(User).where(User.id == claims.sub))
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid access token")
+        raise ApiError(401, "INVALID_TOKEN", "Invalid access token")
     return user

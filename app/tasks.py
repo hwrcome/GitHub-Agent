@@ -19,6 +19,10 @@ def run_search_task(self, task_id: str) -> None:
     except TransientAgentError as exc:
         retry_count = self.request.retries + 1
         task_retry_total.labels("SEARCH").inc()
+        if self.request.retries >= self.max_retries:
+            asyncio.run(mark_failed(parsed_id, sanitize_error(exc)))
+            task_failure_total.labels("SEARCH").inc()
+            raise
         asyncio.run(mark_retrying(parsed_id, retry_count))
         raise self.retry(exc=exc, countdown=2**self.request.retries)
     except Exception as exc:
@@ -27,8 +31,8 @@ def run_search_task(self, task_id: str) -> None:
         raise
 
 
-def enqueue_search_after_commit(task_id: UUID) -> None:
-    run_search_task.delay(str(task_id))
+def enqueue_search_after_commit(task_id: UUID):
+    return run_search_task.delay(str(task_id))
 
 
 @celery_app.task(bind=True, acks_late=True, max_retries=2, name="github_agent.process_document")
@@ -43,5 +47,5 @@ def process_document_task(self, task_id: str) -> None:
         raise
 
 
-def enqueue_document_after_commit(task_id: UUID) -> None:
-    process_document_task.delay(str(task_id))
+def enqueue_document_after_commit(task_id: UUID):
+    return process_document_task.delay(str(task_id))

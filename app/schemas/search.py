@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SearchRequestCreate(BaseModel):
@@ -6,6 +6,13 @@ class SearchRequestCreate(BaseModel):
     max_results: int | None = Field(default=None, ge=1, le=100)
     per_page: int | None = Field(default=None, ge=1, le=50)
     include_code_quality: bool = True
+
+    @field_validator("query")
+    @classmethod
+    def reject_whitespace_only(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("must not be blank")
+        return value
 
     def to_config(self) -> dict[str, int | bool]:
         return {

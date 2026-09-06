@@ -43,8 +43,20 @@ async def api_context(monkeypatch) -> AsyncIterator[ApiContext]:
         async with session_factory() as session:
             yield session
 
-    monkeypatch.setattr("app.api.search.enqueue_search_after_commit", lambda task_id: None)
-    monkeypatch.setattr("app.api.documents.enqueue_document_after_commit", lambda task_id: None)
+    class FakeResult:
+        id = "test-celery-id"
+
+    monkeypatch.setattr("app.api.search.enqueue_search_after_commit", lambda task_id: FakeResult())
+    monkeypatch.setattr(
+        "app.api.search.check_search_rate_limit",
+        lambda user_id: __import__("asyncio").sleep(
+            0,
+            result=__import__("app.services.rate_limit_service", fromlist=["RateLimitDecision"]).RateLimitDecision(
+                True, 0, 0
+            ),
+        ),
+    )
+    monkeypatch.setattr("app.api.documents.enqueue_document_after_commit", lambda task_id: FakeResult())
     app = create_app()
     app.dependency_overrides[get_db] = override_get_db
     async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

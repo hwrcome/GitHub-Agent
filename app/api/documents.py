@@ -25,7 +25,10 @@ async def create_document(
         user.id, payload.title, payload.content, payload.metadata, idempotency_key
     )
     if not submission.reused:
-        enqueue_document_after_commit(submission.task.id)
+        result = enqueue_document_after_commit(submission.task.id)
+        if result is not None:
+            submission.task.celery_task_id = result.id
+            await session.commit()
     return DocumentSubmission(
         document_id=submission.document.id,
         task_id=submission.task.id,

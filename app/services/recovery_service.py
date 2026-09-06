@@ -8,7 +8,7 @@ from sqlalchemy.pool import NullPool
 
 from app.config import get_settings
 from app.models import Task
-from app.tasks import run_search_task
+from app.tasks import process_document_task, run_search_task
 
 
 async def recover_pending_tasks(older_than_seconds: int = 60) -> int:
@@ -30,7 +30,12 @@ async def recover_pending_tasks(older_than_seconds: int = 60) -> int:
                 )
             ).all()
             for task in tasks:
-                result = run_search_task.delay(str(task.id))
+                enqueue = (
+                    process_document_task
+                    if task.task_type == "DOCUMENT_INGEST"
+                    else run_search_task
+                )
+                result = enqueue.delay(str(task.id))
                 task.celery_task_id = result.id
                 recovered += 1
             await session.commit()

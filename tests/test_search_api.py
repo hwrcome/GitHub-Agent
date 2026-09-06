@@ -2,7 +2,11 @@ import pytest
 from sqlalchemy import func, select
 
 from app.models import SearchRequest, Task
+from app.services.rate_limit_service import RateLimitDecision
 from tests.api_fixtures import ApiContext
+
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.mark.asyncio
@@ -33,3 +37,21 @@ async def test_search_requires_authentication_and_validates_query(api_context: A
     )
     assert invalid.status_code == 422
     assert invalid.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+@pytest.mark.asyncio
+async def test_search_rate_limit_returns_429(api_context: ApiContext, monkeypatch):
+    _, token = await api_context.create_user("rate-limited@example.com")
+
+    async def reject_limit(_user_id):
+        return RateLimitDecision(allowed=False, count=11, retry_after=42)
+
+    monkeypatch.setattr("app.api.search.check_search_rate_limit", reject_limit)
+    response = await api_context.client.post(
+        "/search",
+        json={"query": "python inference"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 429
+    assert response.headers["retry-after"] == "42"
+    assert response.json()["error"]["code"] == "RATE_LIMITED"

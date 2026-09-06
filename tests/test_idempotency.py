@@ -3,6 +3,9 @@ import pytest
 from tests.api_fixtures import ApiContext
 
 
+pytestmark = pytest.mark.integration
+
+
 @pytest.mark.asyncio
 async def test_same_key_returns_same_task(api_context: ApiContext):
     _, token = await api_context.create_user("idempotent@example.com")

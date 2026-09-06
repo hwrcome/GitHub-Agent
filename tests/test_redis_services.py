@@ -7,6 +7,9 @@ from app.services.lock_service import LockService
 from app.services.rate_limit_service import RateLimitService
 
 
+pytestmark = pytest.mark.integration
+
+
 @pytest_asyncio.fixture
 async def test_redis():
     client = from_url("redis://localhost:56379/15", decode_responses=True)
