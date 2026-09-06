@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import Callable
 from typing import Any, Literal
 from uuid import UUID
@@ -26,6 +27,15 @@ class PermanentAgentError(AgentError):
 
 class TransientAgentError(AgentError):
     pass
+
+
+def build_mcp_command() -> list[str]:
+    settings = get_settings()
+    python = os.getenv("MCP_SERVER_PYTHON") or settings.mcp_server_python
+    script = os.getenv("MCP_SERVER_SCRIPT") or settings.mcp_server_script
+    if not python or not script:
+        raise PermanentAgentError("MCP_SERVER_PYTHON and MCP_SERVER_SCRIPT must be configured")
+    return [python, script]
 
 
 async def _load_search_input(task_id: UUID) -> SearchInput:

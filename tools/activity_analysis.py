@@ -14,7 +14,7 @@ def get_commit_frequency(full_name, headers):#计算仓库在过去30天内的�
     commits_url = f"https://api.github.com/repos/{full_name}/commits"
     commits_params = {"since": since_date, "per_page": 100}#使用 since 参数过滤出 30 天内的提交。per_page: 100 用于确保一次性获取尽可能多的提交
     try:
-        response = requests.get(commits_url, headers=headers, params=commits_params)
+        response = requests.get(commits_url, headers=headers, params=commits_params, timeout=10)
         if response.status_code == 200:
             commits = response.json()
             return len(commits)
@@ -32,13 +32,13 @@ def repository_activity_analysis(state, config):
         # Pull Requests analysis
         pr_url = f"https://api.github.com/repos/{full_name}/pulls"
         pr_params = {"state": "open", "per_page": 100}#per_page: 100 ,最多返回100条提交记录
-        pr_response = requests.get(pr_url, headers=headers, params=pr_params)
+        pr_response = requests.get(pr_url, headers=headers, params=pr_params, timeout=10)
         pr_count = len(pr_response.json()) if pr_response.status_code == 200 else 0
 
         # Latest commit analysis
         commits_url = f"https://api.github.com/repos/{full_name}/commits"
         commits_params = {"per_page": 1}
-        commits_response = requests.get(commits_url, headers=headers, params=commits_params)
+        commits_response = requests.get(commits_url, headers=headers, params=commits_params, timeout=10)
         if commits_response.status_code == 200:
             commit_data = commits_response.json()
             if commit_data:
