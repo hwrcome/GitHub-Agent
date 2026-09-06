@@ -44,6 +44,7 @@ async def api_context(monkeypatch) -> AsyncIterator[ApiContext]:
             yield session
 
     monkeypatch.setattr("app.api.search.enqueue_search_after_commit", lambda task_id: None)
+    monkeypatch.setattr("app.api.documents.enqueue_document_after_commit", lambda task_id: None)
     app = create_app()
     app.dependency_overrides[get_db] = override_get_db
     async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
