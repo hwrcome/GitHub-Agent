@@ -43,6 +43,13 @@ The stack starts `api`, `worker`, `postgres`, and `redis`. Use a unique long
 `JWT_SECRET`; the Compose file does not embed application secrets. The API is
 available at `http://127.0.0.1:8000`, with interactive OpenAPI docs at `/docs`.
 
+### Implementation documentation
+
+See [`docs/backend-implementation-guide.md`](docs/backend-implementation-guide.md)
+for the complete implementation walkthrough, file responsibility index,
+request/task flow, data model, Redis behavior, testing, deployment, and known
+production boundaries.
+
 这是一个 **GitHub Agent**：输入用户需求后，自动在 GitHub 上检索候选仓库、抓取文档、进行多维度分析与排序，如果用户需要，可以生成一份 **结构化 Markdown 推荐报告**。
 并引入langsmith对agent的能力进行评测。
 项目的核心特点：
