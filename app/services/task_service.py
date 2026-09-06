@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
@@ -13,6 +14,7 @@ from app.agent_runner import TransientAgentError, run_search
 from app.config import get_settings
 from app.models import SearchRequest, SearchResult, Task
 from app.schemas.agent import SearchRunResult
+from app.observability import agent_duration_seconds, running_tasks
 
 
 class InvalidTaskTransition(RuntimeError):
@@ -85,12 +87,18 @@ async def execute_search_task(task_id: UUID) -> None:
                 task.started_at = task.started_at or datetime.now(timezone.utc)
 
             progress: list[str] = []
-            result: SearchRunResult = await __import__("asyncio").to_thread(
-                run_search,
-                task_id,
-                mode=get_settings().agent_mode,
-                progress_callback=progress.append,
-            )
+            running_tasks.inc()
+            started = time.perf_counter()
+            try:
+                result: SearchRunResult = await __import__("asyncio").to_thread(
+                    run_search,
+                    task_id,
+                    mode=get_settings().agent_mode,
+                    progress_callback=progress.append,
+                )
+            finally:
+                agent_duration_seconds.observe(time.perf_counter() - started)
+                running_tasks.dec()
 
             async with session.begin():
                 task = await session.scalar(select(Task).where(Task.id == task_id).with_for_update())

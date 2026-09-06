@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from fastapi.responses import Response
 from redis.asyncio import from_url
 from sqlalchemy import text
 
@@ -10,6 +12,7 @@ from app.errors import ApiError
 
 
 router = APIRouter(prefix="/health", tags=["health"])
+metrics_router = APIRouter(tags=["observability"])
 
 
 async def check_postgres() -> None:
@@ -42,3 +45,8 @@ async def ready() -> dict[str, str]:
     if failures:
         raise ApiError(503, "NOT_READY", "Dependencies unavailable")
     return {"status": "ok"}
+
+
+@metrics_router.get("/metrics")
+async def metrics() -> Response:
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)

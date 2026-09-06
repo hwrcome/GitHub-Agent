@@ -7,6 +7,7 @@ from app.agent_runner import TransientAgentError
 from app.celery_app import celery_app
 from app.services.task_service import execute_search_task, mark_failed, mark_retrying, sanitize_error
 from app.services.document_service import execute_document_task, mark_document_failed
+from app.observability import task_failure_total, task_retry_total, task_success_total
 
 
 @celery_app.task(bind=True, acks_late=True, max_retries=3, name="github_agent.run_search")
@@ -14,12 +15,15 @@ def run_search_task(self, task_id: str) -> None:
     parsed_id = UUID(task_id)
     try:
         asyncio.run(execute_search_task(parsed_id))
+        task_success_total.labels("SEARCH").inc()
     except TransientAgentError as exc:
         retry_count = self.request.retries + 1
+        task_retry_total.labels("SEARCH").inc()
         asyncio.run(mark_retrying(parsed_id, retry_count))
         raise self.retry(exc=exc, countdown=2**self.request.retries)
     except Exception as exc:
         asyncio.run(mark_failed(parsed_id, sanitize_error(exc)))
+        task_failure_total.labels("SEARCH").inc()
         raise
 
 
@@ -32,8 +36,10 @@ def process_document_task(self, task_id: str) -> None:
     parsed_id = UUID(task_id)
     try:
         asyncio.run(execute_document_task(parsed_id))
+        task_success_total.labels("DOCUMENT_INGEST").inc()
     except Exception as exc:
         asyncio.run(mark_document_failed(parsed_id, sanitize_error(exc)))
+        task_failure_total.labels("DOCUMENT_INGEST").inc()
         raise
 
 
