@@ -1,5 +1,37 @@
 ## 项目简介
 
+## Backend service
+
+The `feat/backend-service` branch adds a FastAPI service around the existing Agent.
+It provides JWT auth, PostgreSQL persistence with Alembic, asynchronous search and
+document tasks, Redis cache/rate-limit/locks, structured error responses, health
+checks, and Prometheus metrics.
+
+### Local setup
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e ".[test]"
+copy .env.example .env
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+Set `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, and `AGENT_MODE=mock` in `.env`.
+The API exposes `/auth/register`, `/auth/login`, `/search`, `/documents`,
+`/tasks/{id}`, `/health/live`, `/health/ready`, and `/metrics`.
+
+### Tests
+
+```bash
+pytest -q
+pytest -m integration -q
+```
+
+The default suite uses deterministic mocks and does not call GitHub, LLM, GPU,
+MCP, or a Celery broker. The integration suite requires PostgreSQL and Redis.
+
 这是一个 **GitHub Agent**：输入用户需求后，自动在 GitHub 上检索候选仓库、抓取文档、进行多维度分析与排序，如果用户需要，可以生成一份 **结构化 Markdown 推荐报告**。
 并引入langsmith对agent的能力进行评测。
 项目的核心特点：
