@@ -22,5 +22,5 @@ def run_search_task(self, task_id: str) -> None:
         raise
 
 
-async def enqueue_search_after_commit(task_id: UUID) -> None:
+def enqueue_search_after_commit(task_id: UUID) -> None:
     run_search_task.delay(str(task_id))
