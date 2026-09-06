@@ -9,6 +9,7 @@ __pycache__/
 
 # 忽略虚拟环境
 venv/
+.venv/
 .env/
 .worktrees/
 
