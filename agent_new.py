@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 load_dotenv() # 这句话的意思是：强制把 .env 文件里的变量塞进系统环境变量里！
 import os
 import logging
-import getpass
 from pathlib import Path
 from langgraph.graph import START, END, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
@@ -36,12 +35,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 dotenv_path = Path(__file__).resolve().parent/ ".env"
-print(f"Looking for .env at: {dotenv_path}")
 if dotenv_path.exists():
     load_dotenv(dotenv_path)
-
-if "GITHUB_API_KEY" not in os.environ:
-    os.environ["GITHUB_API_KEY"] = getpass.getpass("Enter your GitHub API key: ")
 
 # ---------------------------
 # State & Configuration
@@ -200,6 +195,10 @@ graph = builder.compile(checkpointer=memory)
 # CLI entrypoint
 # -------------------------------------------------------
 if __name__ == "__main__":
+    if "GITHUB_API_KEY" not in os.environ:
+        import getpass
+
+        os.environ["GITHUB_API_KEY"] = getpass.getpass("Enter your GitHub API key: ")
     print("🤖 GitHub 智能推荐 Agent 已启动！(输入 'quit' 或 'exit' 退出)")
     
     context_query = ""
