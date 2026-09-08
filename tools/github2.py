@@ -3,7 +3,6 @@ import os
 import base64
 import logging
 import asyncio
-import sqlite3               # 🌟 新增：导入 sqlite3
 from datetime import datetime, timedelta  # 🌟 新增：导入时间处理模块，用于缓存过期判断
 from pathlib import Path
 import httpx
@@ -16,38 +15,14 @@ logger = logging.getLogger(__name__)
 # ==========================================
 # 🌟 数据库初始化与缓存工具函数 开始
 # ==========================================
-DB_PATH = "github_cache.db"
-
-def init_db():
-    """初始化 SQLite 数据库，创建缓存表"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS repo_cache (
-            repo_name TEXT PRIMARY KEY,
-            combined_doc TEXT,
-            updated_at TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-# 脚本加载时自动建表
-init_db()
+_LEGACY_CACHE: dict[str, tuple[str, datetime]] = {}
 
 def get_from_cache(repo_name: str, expire_days: int = 7):
     """从数据库读取未过期的缓存文档"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT combined_doc, updated_at FROM repo_cache WHERE repo_name = ?", (repo_name,))
-        row = cursor.fetchone()
-        conn.close()
-
+        row = _LEGACY_CACHE.get(repo_name)
         if row:
-            combined_doc, updated_at_str = row
-            updated_at = datetime.fromisoformat(updated_at_str)
-            # 检查是否过期
+            combined_doc, updated_at = row
             if datetime.now() - updated_at < timedelta(days=expire_days):
                 return combined_doc
             else:
@@ -59,15 +34,7 @@ def get_from_cache(repo_name: str, expire_days: int = 7):
 def save_to_cache(repo_name: str, combined_doc: str):
     """将大模型提纯后的最终文档保存进数据库"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        now_str = datetime.now().isoformat()
-        cursor.execute('''
-            REPLACE INTO repo_cache (repo_name, combined_doc, updated_at)
-            VALUES (?, ?, ?)
-        ''', (repo_name, combined_doc, now_str))
-        conn.commit()
-        conn.close()
+        _LEGACY_CACHE[repo_name] = (combined_doc, datetime.now())
     except Exception as e:
         logger.error(f"写入缓存失败 {repo_name}: {e}")
 # ==========================================
@@ -248,7 +215,7 @@ async def fetch_github_repositories(query: str, max_results: int, per_page: int,
     url = "https://api.github.com/search/repositories"
     repositories = []
     num_pages = max_results // per_page
-    async with httpx.AsyncClient(follow_redirects=True) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=10) as client:
         for page in range(1, num_pages + 1):
             params = {
                 "q": query,

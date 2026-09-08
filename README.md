@@ -1,4 +1,94 @@
-## 项目简介
+## GitHub Agent
+
+This repository contains a GitHub recommendation Agent and a service-oriented
+backend built around it.
+
+## Backend service
+
+The `feat/backend-service` branch provides a FastAPI service with:
+
+- JWT authentication and user/admin authorization;
+- PostgreSQL persistence managed by SQLAlchemy Async and Alembic;
+- asynchronous search and document-ingestion tasks through Celery;
+- Redis-backed caching, rate limiting, and distributed locks;
+- idempotent submissions, retries, task recovery, health checks, structured
+  errors, request IDs, and Prometheus metrics.
+
+### API
+
+The service exposes:
+
+```text
+POST /auth/register
+POST /auth/login
+POST /search
+POST /documents
+GET  /tasks/{id}
+GET  /health/live
+GET  /health/ready
+GET  /metrics
+```
+
+Interactive OpenAPI documentation is available at
+`http://127.0.0.1:8000/docs` after startup.
+
+### Local setup
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[test]"
+Copy-Item .env.example .env
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+Configure the database, Redis, JWT, and external-agent integration settings in
+`.env` before starting the service directly on the host.
+
+### Tests
+
+```powershell
+pytest -q
+pytest -m integration -q
+```
+
+The fast suite is self-contained. The integration suite requires reachable
+PostgreSQL and Redis services.
+
+### Docker Compose
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build -d
+docker compose ps
+```
+
+Compose starts four services:
+
+```text
+api       FastAPI HTTP service on http://127.0.0.1:8000
+worker    Celery background-task worker
+postgres  PostgreSQL database
+redis     Redis cache, rate-limit, lock, and broker service
+```
+
+The API container runs Alembic migrations before starting. To stop the stack
+while preserving named volumes:
+
+```powershell
+docker compose down
+```
+
+Use `docker compose up -d` to start the existing images again, or
+`docker compose up --build -d` after changing application code.
+
+### Implementation documentation
+
+See [`docs/backend-implementation-guide.md`](docs/backend-implementation-guide.md)
+for the implementation walkthrough, file responsibility index, request/task
+flow, data model, Redis behavior, testing, deployment, and known production
+boundaries.
 
 这是一个 **GitHub Agent**：输入用户需求后，自动在 GitHub 上检索候选仓库、抓取文档、进行多维度分析与排序，如果用户需要，可以生成一份 **结构化 Markdown 推荐报告**。
 并引入langsmith对agent的能力进行评测。

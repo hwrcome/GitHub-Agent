@@ -15,10 +15,10 @@ class MCPAdapter:
         """
         try:
             if client is None:
-                async with httpx.AsyncClient() as temp_client:
-                    response = await temp_client.get(url, headers=headers, params=params)
+                async with httpx.AsyncClient(timeout=10) as temp_client:
+                    response = await temp_client.get(url, headers=headers, params=params, timeout=10)
             else:
-                response = await client.get(url, headers=headers, params=params)
+                response = await client.get(url, headers=headers, params=params, timeout=10)
             logger.info(f"[{self.adapter_name}] Fetched URL: {url} with status {response.status_code}")
             return response
         except Exception as e:

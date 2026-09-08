@@ -3,6 +3,7 @@ import sys
 import logging
 import ast  # <--- ✅ 补上了这个关键导入
 from typing import Optional
+from app.agent_runner import build_mcp_command
 from contextlib import AsyncExitStack
 
 # 移除原本不需要的 os, subprocess, tempfile, shutil 等，保持 Client 轻量化
@@ -15,8 +16,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------
 # 配置路径 (保持你原本的设置)
 # ---------------------------------------------------------
-SERVER_SCRIPT = "/data1/hanwenrui/mcp/server.py"
-SERVER_PYTHON = "/data1/hanwenrui/anaconda3/envs/check/bin/python"
+SERVER_SCRIPT = ""
+SERVER_PYTHON = ""
 
 # ---------------------------------------------------------
 # MCP Client 类定义
@@ -107,10 +108,11 @@ async def call_mcp_tool(repo: dict) -> dict:
 
     # 2. 初始化并连接客户端 (CGI模式：每次请求新建一个进程)
     # 注意：args 必须是列表形式 [SERVER_SCRIPT]
+    mcp_command = build_mcp_command()
     client = MCPClient(
         name="analyze_repo_quality",
-        args=[SERVER_SCRIPT], 
-        command=SERVER_PYTHON
+        args=[mcp_command[1]],
+        command=mcp_command[0]
     )
 
     try:
